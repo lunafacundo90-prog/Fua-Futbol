@@ -10,17 +10,19 @@ export default function Navbar() {
   const [menuAbierto, setMenuAbierto] = useState(false)
 
   useEffect(() => {
-    async function iniciarNotificaciones() {
+    let canal = null
+
+    async function cargarUsuarioYNotificaciones() {
       const {
         data: { user },
       } = await supabase.auth.getUser()
 
+      setUsuario(user || null)
+
       if (!user) {
-        setUsuario(null)
+        setCantidad(0)
         return
       }
-
-      setUsuario(user)
 
       async function cargarNotificaciones() {
         const { count, error } = await supabase
@@ -34,9 +36,9 @@ export default function Navbar() {
         }
       }
 
-      cargarNotificaciones()
+      await cargarNotificaciones()
 
-      const canal = supabase
+      canal = supabase
         .channel(`notificaciones-${user.id}`)
         .on(
           'postgres_changes',
@@ -51,36 +53,59 @@ export default function Navbar() {
           }
         )
         .subscribe()
-
-      return () => {
-        supabase.removeChannel(canal)
-      }
     }
 
-    const limpiar = iniciarNotificaciones()
+    cargarUsuarioYNotificaciones()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      if (canal) {
+        supabase.removeChannel(canal)
+        canal = null
+      }
+
+      cargarUsuarioYNotificaciones()
+    })
 
     return () => {
-      limpiar.then((fn) => {
-        if (fn) fn()
-      })
+      if (canal) {
+        supabase.removeChannel(canal)
+      }
+
+      subscription.unsubscribe()
     }
   }, [])
 
   async function cerrarSesion() {
     await supabase.auth.signOut()
+    setUsuario(null)
+    setCantidad(0)
+    setMenuAbierto(false)
     window.location.href = '/login'
   }
 
   const linksUsuario = (
     <>
-      <Link href="/partidos">Partidos</Link>
+      <Link href="/partidos" onClick={() => setMenuAbierto(false)}>
+        Partidos
+      </Link>
 
       {usuario ? (
         <>
-          <Link href="/mis-partidos">Mis partidos</Link>
-          <Link href="/mis-solicitudes">Mis solicitudes</Link>
+          <Link href="/mis-partidos" onClick={() => setMenuAbierto(false)}>
+            Mis partidos
+          </Link>
 
-          <Link href="/notificaciones" className="flex items-center gap-2">
+          <Link href="/mis-solicitudes" onClick={() => setMenuAbierto(false)}>
+            Mis solicitudes
+          </Link>
+
+          <Link
+            href="/notificaciones"
+            onClick={() => setMenuAbierto(false)}
+            className="flex items-center gap-2"
+          >
             <span>🔔 Notificaciones</span>
 
             {cantidad > 0 && (
@@ -90,23 +115,33 @@ export default function Navbar() {
             )}
           </Link>
 
-          <Link href="/perfil">Mi perfil</Link>
+          <Link href="/perfil" onClick={() => setMenuAbierto(false)}>
+            Mi perfil
+          </Link>
 
-          <button onClick={cerrarSesion} className="text-red-400 font-bold text-left">
+          <button
+            onClick={cerrarSesion}
+            className="text-red-400 font-bold text-left"
+          >
             Cerrar sesión
           </button>
         </>
       ) : (
         <>
-          <Link href="/login">Iniciar sesión</Link>
-          <Link href="/registro">Registrarse</Link>
+          <Link href="/login" onClick={() => setMenuAbierto(false)}>
+            Iniciar sesión
+          </Link>
+
+          <Link href="/registro" onClick={() => setMenuAbierto(false)}>
+            Registrarse
+          </Link>
         </>
       )}
     </>
   )
 
   return (
-    <nav className="bg-black border-b border-green-900 px-6 py-4 text-white">
+    <nav className="bg-black border-b border-green-900 px-4 md:px-6 py-4 text-white">
       <div className="flex items-center justify-between">
         <Link href="/" className="font-bold text-green-400 text-xl">
           ⚽ FUA!
@@ -131,4 +166,4 @@ export default function Navbar() {
       )}
     </nav>
   )
-} 
+}
