@@ -29,6 +29,7 @@ export default function Partidos() {
       const { data, error } = await supabase
         .from('partidos')
         .select('*')
+        .eq('finalizado', false)
         .order('fecha', { ascending: true })
 
       if (error) {

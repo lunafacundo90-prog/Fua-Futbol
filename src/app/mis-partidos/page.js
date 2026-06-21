@@ -130,18 +130,25 @@ export default function MisPartidos() {
       (solicitud) => solicitud.estado === 'aceptado'
     )
 
-    const valoracionesPendientes = jugadoresAceptados.flatMap((solicitud) => [
-      {
-        partido_id: partido.id,
-        evaluador_id: partido.creador_id,
-        evaluado_id: solicitud.jugador_id,
-      },
-      {
-        partido_id: partido.id,
-        evaluador_id: solicitud.jugador_id,
-        evaluado_id: partido.creador_id,
-      },
-    ])
+    const valoracionesPendientes = jugadoresAceptados.flatMap((solicitud) => {
+  const valoraciones = []
+
+  if (partido.creador_id !== solicitud.jugador_id) {
+    valoraciones.push({
+      partido_id: partido.id,
+      evaluador_id: partido.creador_id,
+      evaluado_id: solicitud.jugador_id,
+    })
+
+    valoraciones.push({
+      partido_id: partido.id,
+      evaluador_id: solicitud.jugador_id,
+      evaluado_id: partido.creador_id,
+    })
+  }
+
+  return valoraciones
+})
 
     if (valoracionesPendientes.length > 0) {
       const { error: valoracionError } = await supabase
