@@ -24,7 +24,8 @@ export default function Login() {
       return
     }
 
-    router.push('/perfil')
+    router.refresh()
+router.push('/perfil')
   }
 
   return (
