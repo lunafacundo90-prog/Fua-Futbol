@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
 
 export default function Perfil() {
   const router = useRouter()
   const [perfil, setPerfil] = useState(null)
   const [valoraciones, setValoraciones] = useState([])
+  const [partidosSumado, setPartidosSumado] = useState([])
   const [mensaje, setMensaje] = useState('Cargando perfil...')
   const [subiendo, setSubiendo] = useState(false)
 
@@ -33,17 +35,36 @@ export default function Perfil() {
         return
       }
 
-      const { data: valoracionesData, error: valoracionesError } = await supabase
+      const { data: valoracionesData } = await supabase
         .from('valoraciones')
         .select('puntualidad, actitud, nivel_real, comentario')
         .eq('evaluado_id', user.id)
 
-      if (valoracionesError) {
-        console.log(valoracionesError.message)
+      const { data: partidosData, error: partidosError } = await supabase
+        .from('solicitudes_partido')
+        .select(`
+          id,
+          estado,
+          partidos (
+            id,
+            zona,
+            fecha,
+            hora,
+            tipo_futbol,
+            nivel,
+            finalizado
+          )
+        `)
+        .eq('jugador_id', user.id)
+        .eq('estado', 'aceptado')
+
+      if (partidosError) {
+        console.log(partidosError.message)
       }
 
       setPerfil(data)
       setValoraciones(valoracionesData || [])
+      setPartidosSumado(partidosData || [])
       setMensaje('')
     }
 
@@ -52,7 +73,6 @@ export default function Perfil() {
 
   async function subirAvatar(e) {
     const archivo = e.target.files[0]
-
     if (!archivo) return
 
     setSubiendo(true)
@@ -104,7 +124,6 @@ export default function Perfil() {
 
   const promedio = (campo) => {
     if (valoraciones.length === 0) return 0
-
     const total = valoraciones.reduce((acc, item) => acc + (item[campo] || 0), 0)
     return (total / valoraciones.length).toFixed(1)
   }
@@ -163,6 +182,48 @@ export default function Perfil() {
               <p><strong>Zona:</strong> {perfil.zona}</p>
               <p><strong>Posición:</strong> {perfil.posicion}</p>
               <p><strong>Nivel:</strong> {perfil.nivel}</p>
+            </div>
+
+            <div className="mt-8 border-t border-green-900 pt-6">
+              <h2 className="text-xl md:text-2xl font-bold text-green-400 mb-4">
+                ⚽ Partidos donde me sumé
+              </h2>
+
+              {partidosSumado.length === 0 ? (
+                <p className="text-zinc-400">
+                  Todavía no estás confirmado en ningún partido.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {partidosSumado.map((item) => (
+                    <div
+                      key={item.id}
+                      className="bg-black/30 border border-green-900 rounded-xl p-4 text-sm md:text-base"
+                    >
+                      <p className="font-bold text-green-400">
+                        ⚽ Fútbol {item.partidos?.tipo_futbol}
+                      </p>
+                      <p>📍 {item.partidos?.zona}</p>
+                      <p>📅 {item.partidos?.fecha}</p>
+                      <p>⏰ {item.partidos?.hora}</p>
+                      <p>🎯 Nivel: {item.partidos?.nivel}</p>
+
+                      {item.partidos?.finalizado ? (
+                        <p className="mt-2 text-zinc-400 font-bold">
+                          ✅ Finalizado
+                        </p>
+                      ) : (
+                        <Link
+                          href={`/chat/${item.partidos?.id}`}
+                          className="inline-block mt-3 bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg font-bold"
+                        >
+                          Ir al chat
+                        </Link>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="mt-8 border-t border-green-900 pt-6">
