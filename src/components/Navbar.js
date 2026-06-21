@@ -93,6 +93,9 @@ export default function Navbar() {
 
       {usuario ? (
         <>
+        <Link href="/crear-partido" onClick={() => setMenuAbierto(false)}>
+  Crear partido
+</Link>
           <Link href="/mis-partidos" onClick={() => setMenuAbierto(false)}>
             Mis partidos
           </Link>
